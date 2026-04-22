@@ -183,15 +183,24 @@ function boxed(l)     { return '<div class="boxed">'  + K(l, true) + '</div>'; }
 function boxedK(l)    { return '<div class="boxed-k">' + K(l, true) + '</div>'; }
 
 /* ─── Number format ─── */
+/* Oraliq qiymatlar uchun: 5 xona */
 function fmt(v) {
+  if (!isFinite(v)) return '\\text{NaN}';
+  if (Math.abs(v) < 1e-14) return '0';
+  return parseFloat(v.toFixed(5)).toString();
+}
+/* y natijasi uchun: 4 xona */
+function fmtY(v) {
   if (!isFinite(v)) return '\\text{NaN}';
   if (Math.abs(v) < 1e-14) return '0';
   return parseFloat(v.toFixed(4)).toString();
 }
-function plain(v) {
+/* Jadval uchun plain */
+function plain(v, isY) {
   if (!isFinite(v)) return 'NaN';
   if (Math.abs(v) < 1e-14) return '0';
-  return parseFloat(v.toFixed(4)).toString();
+  return isY ? parseFloat(v.toFixed(4)).toString()
+              : parseFloat(v.toFixed(5)).toString();
 }
 
 /* ─── Latex preview ─── */
@@ -225,6 +234,19 @@ function setAllSteps() {
 function evalF(expr, x, y) {
   try { return math.evaluate(expr, { x, y }); }
   catch(e) { return NaN; }
+}
+
+/* Substitute numeric x,y into the expression and return LaTeX */
+function substLatex(expr, x, y) {
+  try {
+    const node = math.parse(expr.trim());
+    const sub = node.transform(function(n) {
+      if (n.isSymbolNode && n.name === 'x') return new math.ConstantNode(parseFloat(fmt(x)));
+      if (n.isSymbolNode && n.name === 'y') return new math.ConstantNode(parseFloat(fmt(y)));
+      return n;
+    });
+    return sub.toTex({ parenthesis: 'auto' });
+  } catch(e) { return String(parseFloat(fmt(evalF(expr, x, y)))); }
 }
 
 /* ─── Section wrapper ─── */
@@ -311,43 +333,78 @@ function solve() {
       /* Given */
       + '<div class="pm-step">'
       +   '<div class="pm-step-lbl">Berilgan nuqta</div>'
-      +   K('x_{' + i + '} = ' + fmt(xn) + ',\\quad y_{' + i + '} = ' + fmt(yn), true)
+      +   K('x_{' + i + '} = ' + fmt(xn) + ',\\quad y_{' + i + '} = ' + fmtY(yn), true)
       + '</div>'
 
       /* k1 */
-      + '<div class="pm-step k-block">'
-      +   '<div class="pm-step-lbl">k₁ — birinchi baholash</div>'
-      +   K('k_1 = ' + fmt(h) + ' \\cdot f(' + fmt(xn) + ',\\,' + fmt(yn) + ') = ' + fmt(k1), true)
-      + '</div>'
+      + (function(){
+          var ax1 = xn, ay1 = yn;
+          var fv1 = evalF(expr, ax1, ay1);
+          var sl1 = substLatex(expr, ax1, ay1);
+          return '<div class="pm-step k-block">'
+            + '<div class="pm-step-lbl">k₁ — birinchi baholash</div>'
+            + K('k_1 = h \\cdot f(x_n,\\;y_n)', true)
+            + K('= ' + fmt(h) + ' \\cdot f(' + fmt(xn) + ',\\;' + fmtY(yn) + ')', true)
+            + K('= ' + fmt(h) + ' \\cdot \\left(' + sl1 + '\\right)', true)
+            + K('= ' + fmt(h) + ' \\cdot ' + fmt(fv1) + ' = ' + fmt(k1), true)
+            + '</div>';
+        })()
 
       /* k2 */
-      + '<div class="pm-step k-block">'
-      +   '<div class="pm-step-lbl">k₂ — yarim qadam, k₁ bilan</div>'
-      +   K('k_2 = ' + fmt(h) + ' \\cdot f\\!\\left(' + fmt(xn+h/2) + ',\\,' + fmt(yn+k1/2) + '\\right) = ' + fmt(k2), true)
-      + '</div>'
+      + (function(){
+          var ax2 = xn + h/2, ay2 = yn + k1/2;
+          var fv2 = evalF(expr, ax2, ay2);
+          var sl2 = substLatex(expr, ax2, ay2);
+          return '<div class="pm-step k-block">'
+            + '<div class="pm-step-lbl">k₂ — yarim qadam, k₁/2 bilan</div>'
+            + K('k_2 = h \\cdot f\\!\\left(x_n+\\tfrac{h}{2},\\;y_n+\\tfrac{k_1}{2}\\right)', true)
+            + K('= ' + fmt(h) + ' \\cdot f\\!\\left(' + fmt(xn) + '+' + fmt(h/2) + ',\\;' + fmtY(yn) + '+' + fmt(k1/2) + '\\right)', true)
+            + K('= ' + fmt(h) + ' \\cdot f(' + fmt(ax2) + ',\\;' + fmt(ay2) + ')', true)
+            + K('= ' + fmt(h) + ' \\cdot \\left(' + sl2 + '\\right)', true)
+            + K('= ' + fmt(h) + ' \\cdot ' + fmt(fv2) + ' = ' + fmt(k2), true)
+            + '</div>';
+        })()
 
       /* k3 */
-      + '<div class="pm-step k-block">'
-      +   '<div class="pm-step-lbl">k₃ — yarim qadam, k₂ bilan</div>'
-      +   K('k_3 = ' + fmt(h) + ' \\cdot f\\!\\left(' + fmt(xn+h/2) + ',\\,' + fmt(yn+k2/2) + '\\right) = ' + fmt(k3), true)
-      + '</div>'
+      + (function(){
+          var ax3 = xn + h/2, ay3 = yn + k2/2;
+          var fv3 = evalF(expr, ax3, ay3);
+          var sl3 = substLatex(expr, ax3, ay3);
+          return '<div class="pm-step k-block">'
+            + '<div class="pm-step-lbl">k₃ — yarim qadam, k₂/2 bilan</div>'
+            + K('k_3 = h \\cdot f\\!\\left(x_n+\\tfrac{h}{2},\\;y_n+\\tfrac{k_2}{2}\\right)', true)
+            + K('= ' + fmt(h) + ' \\cdot f\\!\\left(' + fmt(xn) + '+' + fmt(h/2) + ',\\;' + fmtY(yn) + '+' + fmt(k2/2) + '\\right)', true)
+            + K('= ' + fmt(h) + ' \\cdot f(' + fmt(ax3) + ',\\;' + fmt(ay3) + ')', true)
+            + K('= ' + fmt(h) + ' \\cdot \\left(' + sl3 + '\\right)', true)
+            + K('= ' + fmt(h) + ' \\cdot ' + fmt(fv3) + ' = ' + fmt(k3), true)
+            + '</div>';
+        })()
 
       /* k4 */
-      + '<div class="pm-step k-block">'
-      +   '<div class="pm-step-lbl">k₄ — to\'liq qadam</div>'
-      +   K('k_4 = ' + fmt(h) + ' \\cdot f\\!\\left(' + fmt(xn1) + ',\\,' + fmt(yn+k3) + '\\right) = ' + fmt(k4), true)
-      + '</div>'
+      + (function(){
+          var ax4 = xn + h, ay4 = yn + k3;
+          var fv4 = evalF(expr, ax4, ay4);
+          var sl4 = substLatex(expr, ax4, ay4);
+          return '<div class="pm-step k-block">'
+            + '<div class="pm-step-lbl">k₄ — to\'liq qadam, k₃ bilan</div>'
+            + K('k_4 = h \\cdot f(x_n+h,\\;y_n+k_3)', true)
+            + K('= ' + fmt(h) + ' \\cdot f\\!\\left(' + fmt(xn) + '+' + fmt(h) + ',\\;' + fmtY(yn) + '+' + fmt(k3) + '\\right)', true)
+            + K('= ' + fmt(h) + ' \\cdot f(' + fmt(ax4) + ',\\;' + fmt(ay4) + ')', true)
+            + K('= ' + fmt(h) + ' \\cdot \\left(' + sl4 + '\\right)', true)
+            + K('= ' + fmt(h) + ' \\cdot ' + fmt(fv4) + ' = ' + fmt(k4), true)
+            + '</div>';
+        })()
 
       /* weighted avg */
       + '<div class="pm-step">'
       +   '<div class="pm-step-lbl">Og\'irlikli o\'rtacha</div>'
-      +   K('\\Phi = \\tfrac{1}{6}(' + fmt(k1) + ' + 2\\cdot' + fmt(k2) + ' + 2\\cdot' + fmt(k3) + ' + ' + fmt(k4) + ') = ' + fmt(phi), true)
+      +   K('\\Phi = \\tfrac{1}{6}(' + fmt(k1) + ' + 2\\cdot' + fmt(k2) + ' + 2\\cdot' + fmt(k3) + ' + ' + fmt(k4) + ') = ' + fmtY(phi), true)
       + '</div>'
 
       /* result */
       + '<div class="pm-answer">'
       +   '<span class="pm-answer-lbl">Yangi nuqta</span>'
-      +   K('y_{' + (i+1) + '} = ' + fmt(yn) + ' + ' + fmt(phi) + ' = ' + fmt(yn1))
+      +   K('y_{' + (i+1) + '} = ' + fmtY(yn) + ' + ' + fmtY(phi) + ' = ' + fmtY(yn1))
       +   '&nbsp;&nbsp;'
       +   K('x_{' + (i+1) + '} = ' + fmt(xn1))
       + '</div>'
@@ -388,7 +445,7 @@ function solve() {
     html += '<tr>'
       + '<td class="n-cell">' + i + '</td>'
       + '<td class="val">' + plain(pts[i].x) + '</td>'
-      + '<td class="val">' + plain(pts[i].y) + '</td>'
+      + '<td class="val">' + plain(pts[i].y, true) + '</td>'
       + '<td class="k-val">' + (hasK ? plain(kvals[i].k1) : '—') + '</td>'
       + '<td class="k-val">' + (hasK ? plain(kvals[i].k2) : '—') + '</td>'
       + '<td class="k-val">' + (hasK ? plain(kvals[i].k3) : '—') + '</td>'
@@ -403,7 +460,7 @@ function solve() {
 
   /* Chart.js */
   const xVals = pts.map(p => parseFloat(plain(p.x)));
-  const yVals = pts.map(p => parseFloat(plain(p.y)));
+  const yVals = pts.map(p => parseFloat(plain(p.y, true)));
   const isDark = window.matchMedia('(prefers-color-scheme:dark)').matches;
   const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
   const textColor = isDark ? '#928f88' : '#6b6860';

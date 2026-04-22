@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runge–Kutta Usuli — ODT Yechish</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f4f0;--surface:#ffffff;--surface2:#faf9f6;
+  --border:#e2dfd8;--border2:#ece9e2;
+  --text:#18170f;--muted:#6b6860;--hint:#b0ada6;
+  --accent:#1f4fbd;--accent-bg:#edf2fc;
+  --green:#14532d;--green-bg:#f0fdf4;--green-border:#86efac;
+  --amber:#78350f;--amber-bg:#fffbeb;--amber-border:#fcd34d;
+  --purple:#4c1d95;--purple-bg:#f5f3ff;--purple-border:#c4b5fd;
+  --r:10px;--rl:14px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#111110;--surface:#1a1917;--surface2:#151413;
+    --border:#2a2926;--border2:#222120;
+    --text:#e8e5de;--muted:#928f88;--hint:#4a4845;
+    --accent:#6b8ff5;--accent-bg:#151e38;
+    --green:#4ade80;--green-bg:#0a1a0e;--green-border:#166534;
+    --amber:#fbbf24;--amber-bg:#1a1200;--amber-border:#854d0e;
+    --purple:#a78bfa;--purple-bg:#1a1030;--purple-border:#4c1d95;
+  }
+}
+body{font-family:Georgia,serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem 1rem 5rem}
+.page{max-width:740px;margin:0 auto}
+h1{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:.25rem}
+.subtitle{font-family:sans-serif;font-size:.85rem;color:var(--muted);margin-bottom:2rem}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:1.25rem 1.5rem;margin-bottom:1.25rem}
+.card-label{font-family:sans-serif;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.9rem}
+
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.inp-block{display:flex;flex-direction:column}
+.inp-block label{font-family:sans-serif;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--hint);margin-bottom:5px}
+.inp-block input{width:100%;padding:8px 11px;font-size:14px;font-family:'Courier New',monospace;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s}
+.inp-block input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+.inp-block input.full{font-family:sans-serif;font-size:14px}
+
+.math-preview{margin-top:8px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r);min-height:36px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.preview-label{font-family:sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--hint);white-space:nowrap}
+.preview-math{font-size:15px;overflow-x:auto}
+.preview-math.error{font-family:sans-serif;font-size:11px;color:#b91c1c;font-style:italic}
+
+.steps-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:1rem}
+.steps-row label{font-family:sans-serif;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--hint)}
+.steps-row input{width:70px;padding:7px 10px;font-size:14px;font-family:'Courier New',monospace;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);outline:none}
+.steps-row input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+.all-btn{padding:7px 14px;font-size:11px;font-family:sans-serif;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--r);cursor:pointer;transition:all .15s}
+.all-btn:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+
+.btn{width:100%;padding:11px;font-size:13px;font-family:sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--text);color:var(--bg);border:none;border-radius:var(--r);cursor:pointer;transition:opacity .15s;margin-bottom:2rem}
+.btn:hover{opacity:.82}
+
+.section{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:1rem;overflow:hidden}
+.sec-head{display:flex;align-items:center;gap:10px;padding:.9rem 1.25rem;border-bottom:1px solid var(--border2);background:var(--surface2)}
+.sec-num{width:26px;height:26px;border-radius:50%;background:var(--text);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:sans-serif;font-size:11px;font-weight:800;flex-shrink:0}
+.sec-title{font-family:sans-serif;font-size:13px;font-weight:700}
+.sec-desc{font-family:sans-serif;font-size:11px;color:var(--muted);margin-top:1px}
+.sec-body{padding:1rem 1.25rem}
+.note{font-family:sans-serif;font-size:12.5px;color:var(--muted);margin:4px 0 10px}
+.mblock{margin:10px 0;overflow-x:auto;text-align:center}
+.sep{height:1px;background:var(--border2);margin:12px 0}
+.boxed{background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--r);padding:9px 14px;margin:10px 0;overflow-x:auto;text-align:center}
+.boxed-k{background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:var(--r);padding:9px 14px;margin:6px 0;overflow-x:auto;text-align:center}
+
+/* Step cards */
+.pm-section-label{font-family:sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--hint);margin-bottom:8px}
+.pm-cards{display:flex;flex-direction:column;gap:10px}
+.pm-card{border:1px solid var(--border2);border-radius:var(--r);overflow:hidden}
+.pm-card-head{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--amber-bg);border-bottom:1px solid var(--amber-border)}
+.pm-card-head span{font-family:sans-serif;font-size:11px;font-weight:700;color:var(--amber)}
+.pm-step{padding:8px 12px;border-bottom:1px solid var(--border2);overflow-x:auto}
+.pm-step-lbl{font-family:sans-serif;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--hint);margin-bottom:3px}
+.pm-step.k-block{background:var(--purple-bg)}
+.pm-answer{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--accent-bg);flex-wrap:wrap}
+.pm-answer-lbl{font-family:sans-serif;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);white-space:nowrap}
+
+/* Summary table */
+.summary-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:1rem;overflow:hidden}
+.summary-head{display:flex;align-items:center;gap:10px;padding:.9rem 1.25rem;border-bottom:1px solid var(--border2);background:var(--surface2)}
+.summary-star{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-family:sans-serif;font-size:13px;font-weight:800;flex-shrink:0}
+.summary-title{font-family:sans-serif;font-size:13px;font-weight:700}
+.summary-desc{font-family:sans-serif;font-size:11px;color:var(--muted);margin-top:1px}
+.tbl-wrap{overflow-x:auto;padding:1rem 1.25rem}
+table.res{width:100%;border-collapse:collapse;font-family:sans-serif;font-size:12px}
+table.res th{background:var(--surface2);border:1px solid var(--border);padding:7px 8px;text-align:center;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);white-space:nowrap}
+table.res th.sym{font-size:12px;text-transform:none;letter-spacing:0;color:var(--text)}
+table.res td{border:1px solid var(--border2);padding:7px 8px;text-align:center;vertical-align:middle}
+table.res tr:nth-child(even) td{background:var(--surface2)}
+table.res td.n-cell{background:var(--accent-bg);font-weight:700;font-family:'Courier New',monospace;font-size:12px}
+table.res td.val{font-family:'Courier New',monospace;font-size:11.5px}
+table.res td.k-val{font-family:'Courier New',monospace;font-size:11px;color:var(--purple)}
+
+/* Chart */
+.chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:1rem;overflow:hidden}
+.chart-head{display:flex;align-items:center;gap:10px;padding:.9rem 1.25rem;border-bottom:1px solid var(--border2);background:var(--surface2)}
+.chart-icon{width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-family:sans-serif;font-size:13px;font-weight:800;flex-shrink:0}
+.chart-title{font-family:sans-serif;font-size:13px;font-weight:700}
+.chart-body{padding:1rem 1.25rem}
+canvas#myChart{width:100%!important;max-height:320px}
+
+.hidden{display:none}
+footer{text-align:center;font-family:sans-serif;font-size:11px;color:var(--hint);margin-top:2.5rem}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Runge–Kutta Usuli (RK4)</h1>
+  <p class="subtitle">4-tartibli aniq sonli usul — oddiy differensial tenglamalar uchun</p>
+
+  <!-- ── Kirish ── -->
+  <div class="card">
+    <div class="card-label">Kirish parametrlari</div>
+
+    <div class="inp-block" style="margin-bottom:12px">
+      <label>f(x, y) — differensial tenglama &nbsp; y' = f(x, y)</label>
+      <input id="iFn" type="text" class="full" placeholder="masalan: x + y  yoki  x*y  yoki  y - x^2" oninput="previewFn()" value="y">
+      <div class="math-preview">
+        <span class="preview-label">Matematik ko'rinish:</span>
+        <span class="preview-math" id="fnPreview"></span>
+      </div>
+    </div>
+
+    <div class="grid3" style="margin-bottom:12px">
+      <div class="inp-block">
+        <label>x₀ (boshlang'ich)</label>
+        <input id="iX0" type="number" value="0" step="any" oninput="previewParams()">
+      </div>
+      <div class="inp-block">
+        <label>y₀ (boshlang'ich)</label>
+        <input id="iY0" type="number" value="1" step="any" oninput="previewParams()">
+      </div>
+      <div class="inp-block">
+        <label>h (qadam)</label>
+        <input id="iH" type="number" value="0.1" step="any" oninput="previewParams()">
+      </div>
+    </div>
+
+    <div class="math-preview" style="margin-bottom:12px">
+      <span class="preview-label">Qiymatlar:</span>
+      <span class="preview-math" id="paramsPreview"></span>
+    </div>
+
+    <div class="steps-row">
+      <label>Ko'rsatiladigan qadamlar soni:</label>
+      <input id="iSteps" type="number" value="5" min="1" max="10">
+      <button class="all-btn" onclick="setAllSteps()">Hammasi (10 ta)</button>
+    </div>
+
+    <div class="inp-block" style="margin-bottom:0">
+      <label>Jami hisoblash nuqtalari (n)</label>
+      <input id="iN" type="number" value="10" min="2" max="50" step="1">
+    </div>
+  </div>
+
+  <button class="btn" onclick="solve()">✦ Hisoblash</button>
+  <div id="output" class="hidden"></div>
+  <footer>Runge–Kutta RK4 · ODT · KaTeX · Chart.js</footer>
+</div>
+
+<script>
+/* ─── KaTeX ─── */
+function K(latex, display) {
+  const el = document.createElement('span');
+  try { katex.render(latex, el, { throwOnError: false, displayMode: !!display }); }
+  catch(e) { el.textContent = latex; }
+  return el.outerHTML;
+}
+function mblock(latex){ return '<div class="mblock">' + K(latex, true) + '</div>'; }
+function note(t)      { return '<p class="note">' + t + '</p>'; }
+function sep()        { return '<div class="sep"></div>'; }
+function boxed(l)     { return '<div class="boxed">'  + K(l, true) + '</div>'; }
+function boxedK(l)    { return '<div class="boxed-k">' + K(l, true) + '</div>'; }
+
+/* ─── Number format ─── */
+function fmt(v, prec) {
+  prec = prec || 8;
+  if (!isFinite(v)) return '\\text{NaN}';
+  if (Math.abs(v) < 1e-14) return '0';
+  return parseFloat(v.toPrecision(prec)).toString();
+}
+function plain(v, prec) {
+  prec = prec || 7;
+  if (!isFinite(v)) return 'NaN';
+  if (Math.abs(v) < 1e-14) return '0';
+  return parseFloat(v.toPrecision(prec)).toString();
+}
+
+/* ─── Latex preview ─── */
+function toLatex(expr) {
+  try { return math.parse(expr.trim()).toTex({ parenthesis: 'auto' }); }
+  catch(e) { return null; }
+}
+function previewFn() {
+  const expr = document.getElementById('iFn').value.trim();
+  const el   = document.getElementById('fnPreview');
+  if (!expr) { el.innerHTML = ''; el.className = 'preview-math'; return; }
+  const lat = toLatex(expr);
+  if (lat) {
+    el.className = 'preview-math';
+    el.innerHTML = K('f(x,y) = ' + lat, true);
+  } else {
+    el.className = 'preview-math error';
+    el.textContent = "Ifoda noto'g'ri";
+  }
+}
+function previewParams() {
+  const x0 = document.getElementById('iX0').value;
+  const y0 = document.getElementById('iY0').value;
+  const h  = document.getElementById('iH').value;
+  document.getElementById('paramsPreview').innerHTML =
+    K('x_0 = ' + x0 + ',\\quad y_0 = ' + y0 + ',\\quad h = ' + h, false);
+}
+function setAllSteps() {
+  document.getElementById('iSteps').value = document.getElementById('iN').value;
+}
+function evalF(expr, x, y) {
+  try { return math.evaluate(expr, { x, y }); }
+  catch(e) { return NaN; }
+}
+
+/* ─── Section wrapper ─── */
+function secWrap(num, title, desc, body) {
+  return '<div class="section">'
+    + '<div class="sec-head">'
+    +   '<div class="sec-num">' + num + '</div>'
+    +   '<div><div class="sec-title">' + title + '</div>'
+    +   '<div class="sec-desc">' + desc + '</div></div>'
+    + '</div><div class="sec-body">' + body + '</div></div>';
+}
+
+/* ─── RK4 step ─── */
+function rk4step(expr, xn, yn, h) {
+  const k1 = h * evalF(expr, xn,       yn);
+  const k2 = h * evalF(expr, xn + h/2, yn + k1/2);
+  const k3 = h * evalF(expr, xn + h/2, yn + k2/2);
+  const k4 = h * evalF(expr, xn + h,   yn + k3);
+  const y1 = yn + (k1 + 2*k2 + 2*k3 + k4) / 6;
+  return { k1, k2, k3, k4, y1 };
+}
+
+/* ─── Main ─── */
+function solve() {
+  const expr   = document.getElementById('iFn').value.trim();
+  const x0     = parseFloat(document.getElementById('iX0').value);
+  const y0     = parseFloat(document.getElementById('iY0').value);
+  const h      = parseFloat(document.getElementById('iH').value);
+  const nTotal = Math.max(2, Math.min(50, parseInt(document.getElementById('iN').value) || 10));
+  const nShow  = Math.max(1, Math.min(nTotal, parseInt(document.getElementById('iSteps').value) || 5));
+
+  if (!expr) { alert("Iltimos, f(x,y) kiriting."); return; }
+  const lat = toLatex(expr);
+  if (!lat)  { alert("Ifoda noto'g'ri."); return; }
+
+  /* Compute all points */
+  const pts = [{ x: x0, y: y0 }];
+  const kvals = [];
+  for (let i = 0; i < nTotal; i++) {
+    const { k1, k2, k3, k4, y1 } = rk4step(expr, pts[i].x, pts[i].y, h);
+    kvals.push({ k1, k2, k3, k4 });
+    pts.push({ x: pts[i].x + h, y: y1 });
+  }
+
+  let html = '';
+
+  /* ── Section 1: Formula ── */
+  html += secWrap(1, 'RK4 Formulasi', '4-tartibli Runge–Kutta ishchi formulalari',
+    note('Har bir qadamda 4 ta koeffitsient hisoblanadi:') +
+    boxedK('k_1 = h \\cdot f(x_n,\\; y_n)') +
+    boxedK('k_2 = h \\cdot f\\!\\left(x_n + \\tfrac{h}{2},\\; y_n + \\tfrac{k_1}{2}\\right)') +
+    boxedK('k_3 = h \\cdot f\\!\\left(x_n + \\tfrac{h}{2},\\; y_n + \\tfrac{k_2}{2}\\right)') +
+    boxedK('k_4 = h \\cdot f(x_n + h,\\; y_n + k_3)') +
+    sep() +
+    note('Yangi y qiymati og\'irlikli o\'rtacha orqali:') +
+    boxed('y_{n+1} = y_n + \\dfrac{1}{6}\\bigl(k_1 + 2k_2 + 2k_3 + k_4\\bigr)') +
+    note('Yangi x:') +
+    boxed('x_{n+1} = x_n + h')
+  );
+
+  /* ── Section 2: Given ── */
+  html += secWrap(2, 'Berilgan', "Masala shartlari",
+    note('Differensial tenglama:') +
+    boxed("y' = f(x,y) = " + lat) +
+    sep() +
+    note('Boshlang\'ich qiymatlar va qadam:') +
+    mblock('x_0 = ' + fmt(x0) + ',\\quad y_0 = ' + fmt(y0) + ',\\quad h = ' + fmt(h))
+  );
+
+  /* ── Section 3: Steps ── */
+  let stepsHtml = '<div class="pm-section-label">Hisoblash qadamlari — har bir qadamda k₁, k₂, k₃, k₄</div><div class="pm-cards">';
+
+  for (let i = 0; i < nShow; i++) {
+    const xn = pts[i].x;
+    const yn = pts[i].y;
+    const { k1, k2, k3, k4 } = kvals[i];
+    const yn1 = pts[i+1].y;
+    const xn1 = pts[i+1].x;
+    const phi = (k1 + 2*k2 + 2*k3 + k4) / 6;
+
+    stepsHtml += '<div class="pm-card">'
+      + '<div class="pm-card-head"><span>Qadam n = ' + i + ' &rarr; n = ' + (i+1) + '</span></div>'
+
+      /* Given */
+      + '<div class="pm-step">'
+      +   '<div class="pm-step-lbl">Berilgan nuqta</div>'
+      +   K('x_{' + i + '} = ' + fmt(xn) + ',\\quad y_{' + i + '} = ' + fmt(yn), true)
+      + '</div>'
+
+      /* k1 */
+      + '<div class="pm-step k-block">'
+      +   '<div class="pm-step-lbl">k₁ — birinchi baholash</div>'
+      +   K('k_1 = ' + fmt(h) + ' \\cdot f(' + fmt(xn) + ',\\,' + fmt(yn) + ') = ' + fmt(k1), true)
+      + '</div>'
+
+      /* k2 */
+      + '<div class="pm-step k-block">'
+      +   '<div class="pm-step-lbl">k₂ — yarim qadam, k₁ bilan</div>'
+      +   K('k_2 = ' + fmt(h) + ' \\cdot f\\!\\left(' + fmt(xn+h/2) + ',\\,' + fmt(yn+k1/2) + '\\right) = ' + fmt(k2), true)
+      + '</div>'
+
+      /* k3 */
+      + '<div class="pm-step k-block">'
+      +   '<div class="pm-step-lbl">k₃ — yarim qadam, k₂ bilan</div>'
+      +   K('k_3 = ' + fmt(h) + ' \\cdot f\\!\\left(' + fmt(xn+h/2) + ',\\,' + fmt(yn+k2/2) + '\\right) = ' + fmt(k3), true)
+      + '</div>'
+
+      /* k4 */
+      + '<div class="pm-step k-block">'
+      +   '<div class="pm-step-lbl">k₄ — to\'liq qadam</div>'
+      +   K('k_4 = ' + fmt(h) + ' \\cdot f\\!\\left(' + fmt(xn1) + ',\\,' + fmt(yn+k3) + '\\right) = ' + fmt(k4), true)
+      + '</div>'
+
+      /* weighted avg */
+      + '<div class="pm-step">'
+      +   '<div class="pm-step-lbl">Og\'irlikli o\'rtacha</div>'
+      +   K('\\Phi = \\tfrac{1}{6}(' + fmt(k1) + ' + 2\\cdot' + fmt(k2) + ' + 2\\cdot' + fmt(k3) + ' + ' + fmt(k4) + ') = ' + fmt(phi), true)
+      + '</div>'
+
+      /* result */
+      + '<div class="pm-answer">'
+      +   '<span class="pm-answer-lbl">Yangi nuqta</span>'
+      +   K('y_{' + (i+1) + '} = ' + fmt(yn) + ' + ' + fmt(phi) + ' = ' + fmt(yn1))
+      +   '&nbsp;&nbsp;'
+      +   K('x_{' + (i+1) + '} = ' + fmt(xn1))
+      + '</div>'
+      + '</div>';
+  }
+  stepsHtml += '</div>';
+  html += secWrap(3, 'Qadamlar', nShow + ' ta qadam ko\'rsatilmoqda (har birida k₁–k₄)', stepsHtml);
+
+  /* ── Chart ── */
+  html += '<div class="chart-wrap">'
+    + '<div class="chart-head">'
+    +   '<div class="chart-icon">&#9650;</div>'
+    +   '<div><div class="chart-title">Grafik — y(x)</div>'
+    +   '<div style="font-family:sans-serif;font-size:11px;color:var(--muted);margin-top:1px">RK4 usuli bilan hisoblangan nuqtalar</div></div>'
+    + '</div>'
+    + '<div class="chart-body"><canvas id="myChart"></canvas></div>'
+    + '</div>';
+
+  /* ── Summary table ── */
+  html += '<div class="summary-section">'
+    + '<div class="summary-head">'
+    +   '<div class="summary-star">&Sigma;</div>'
+    +   '<div><div class="summary-title">Umumiy natijalar jadvali</div>'
+    +   '<div class="summary-desc">Barcha ' + nTotal + ' ta nuqta: x, y va k koeffitsientlar</div></div>'
+    + '</div>'
+    + '<div class="tbl-wrap"><table class="res"><thead><tr>'
+    +   '<th>n</th>'
+    +   '<th class="sym">' + K('x_n') + '</th>'
+    +   '<th class="sym">' + K('y_n') + '</th>'
+    +   '<th class="sym">' + K('k_1') + '</th>'
+    +   '<th class="sym">' + K('k_2') + '</th>'
+    +   '<th class="sym">' + K('k_3') + '</th>'
+    +   '<th class="sym">' + K('k_4') + '</th>'
+    + '</tr></thead><tbody>';
+
+  for (let i = 0; i <= nTotal; i++) {
+    const hasK = i < nTotal;
+    html += '<tr>'
+      + '<td class="n-cell">' + i + '</td>'
+      + '<td class="val">' + plain(pts[i].x) + '</td>'
+      + '<td class="val">' + plain(pts[i].y) + '</td>'
+      + '<td class="k-val">' + (hasK ? plain(kvals[i].k1) : '—') + '</td>'
+      + '<td class="k-val">' + (hasK ? plain(kvals[i].k2) : '—') + '</td>'
+      + '<td class="k-val">' + (hasK ? plain(kvals[i].k3) : '—') + '</td>'
+      + '<td class="k-val">' + (hasK ? plain(kvals[i].k4) : '—') + '</td>'
+      + '</tr>';
+  }
+  html += '</tbody></table></div></div>';
+
+  const out = document.getElementById('output');
+  out.innerHTML = html;
+  out.classList.remove('hidden');
+
+  /* Chart.js */
+  const xVals = pts.map(p => parseFloat(plain(p.x, 5)));
+  const yVals = pts.map(p => parseFloat(plain(p.y, 7)));
+  const isDark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+  const textColor = isDark ? '#928f88' : '#6b6860';
+  const lineColor = isDark ? '#6b8ff5' : '#1f4fbd';
+  const dotColor  = isDark ? '#a78bfa' : '#4c1d95';
+
+  const ctx = document.getElementById('myChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: xVals,
+      datasets: [{
+        label: 'y(x) — RK4',
+        data: yVals,
+        borderColor: lineColor,
+        backgroundColor: lineColor + '18',
+        pointBackgroundColor: dotColor,
+        pointBorderColor: dotColor,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.3,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: textColor, font: { family: 'sans-serif', size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: c => ' y = ' + c.parsed.y.toPrecision(7),
+            title: items => 'x = ' + items[0].label
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'x', color: textColor, font: { size: 12 } },
+          grid: { color: gridColor },
+          ticks: { color: textColor, font: { family: 'monospace', size: 11 } }
+        },
+        y: {
+          title: { display: true, text: 'y(x)', color: textColor, font: { size: 12 } },
+          grid: { color: gridColor },
+          ticks: { color: textColor, font: { family: 'monospace', size: 11 } }
+        }
+      }
+    }
+  });
+
+  out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  previewFn();
+  previewParams();
+});
+</script>
+</body>
+</html>
